@@ -9,7 +9,7 @@
     ws="xorg "#   Window System
     dm=""    #   Display Manager
     #   Window Manager
-        wm="bspwm sxhkd "    # bspwm/sxhkdrc 
+        wm="bspwm sxhkd "    # bspwm/sxhkdrc Btrfs Sxhkd
     
     hmi=" ${ws} ${wm}"
 
@@ -32,4 +32,7 @@ sudo mkdir -p /home/$USER/.config/sxhkd/ && touch /home/$USER/.config/sxhkd/sxhk
 sudo chmod 774 /home/$USER/.config/bspwm/bspwmrc
 sudo chmod 774 /home/$USER/.config/sxhkd/sxhkdrc
 
-cp ./hmi/bspwmrc /home/$USER/.config/bspwm/bspwmrc
+cp ./interface/bspwm/bspwmrc /home/$USER/.config/bspwm/bspwmrc
+cp ./interface/bspwm/sxhkdrc /home/$USER/.config/bspwm/sxhkdrc
+cp ./interface/bspwm/autostart /home/$USER/.config/bspwm/autostart
+
