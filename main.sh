@@ -2,10 +2,10 @@
 :' 
     TO-DO :
 '
-
 #   Automated Arch Linux Installer
 #   Cleaning the TTY
     clear
+
 #   Style
     BOLD='\e[1m'
     BRED='\e[91m'
@@ -22,28 +22,52 @@
     error_print () {
         echo -e "${BOLD}${BRED}[ ${BBLUE}•${BRED} ] $1${RESET}"
         }
+
 #   Pre-installation
    #   Setting up mirrors for optimal download
-       countryIso=$(curl -4 ifconfig.co/country-iso)
-       timedatectl set-ntp true
-   pacman -Syu
-   pacman -S --noconfirm archlinux-keyring #update keyrings to latest to prevent packages failing to install
-   pacman -S --noconfirm --needed pacman-contrib terminus-font
-   setfont ter-v22b
-   sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-   pacman -S --noconfirm --needed reflector rsync grub snapper
+        countryIso=$(curl -4 ifconfig.co/country-iso)
+        timedatectl set-ntp true
+        pacman -Syu
+        pacman -S --noconfirm archlinux-keyring #update keyrings to latest to prevent packages failing to install
+        pacman -S --noconfirm --needed pacman-contrib terminus-font
+        setfont ter-v22b
+        sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+        pacman -S --noconfirm --needed reflector rsync grub snapper
+
        #cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
    #   Setting up $iso mirrors for faster downloads
        reflector -a 48 -c $countryIso -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
+
    #   Installing Prerequisites
        pacman -S --noconfirm --needed gptfdisk glibc #btrfs-progs
-   #   User info
-       read -p " Please enter username " $username
-       read -p " Please enter password " $password
+
+   # Setting up a password for the user account
+    userpass_selector () {
+        input_print "Please enter name for a user account (enter empty to not create one): "
+        read -r username
+        if [[ -z "$username" ]]; then
+            return 0
+        fi
+        input_print "Please enter a password for $username (you're not going to see the password): "
+        read -r -s userpass
+        if [[ -z "$userpass" ]]; then
+            echo
+            error_print "You need to enter a password for $username, please try again."
+            return 1
+        fi
+        echo
+        input_print "Please enter the password again (you're not going to see it): " 
+        read -r -s userpass2
+        echo
+        if [[ "$userpass" != "$userpass2" ]]; then
+            echo
+            error_print "Passwords don't match, please try again."
+            return 1
+        fi
+        return 0
+    }
  
 #   File system (Creates and manipulates partition tables and partitions on a storage.)
-   lsblk -f
-   read  -p "Please enter disk :  " disk
    sh ./filesystem/btrfs.sh
 
 #   Virtualization check
@@ -111,7 +135,7 @@
             return 1
         esac
     }
-
+    
 #   Console keyboard layout choice
     keyboard () {
         input_print "Please insert the keyboard layout to use in console (enter empty to use US, or \"/\" to look up for keyboard layouts): "
@@ -158,7 +182,7 @@
    echo "::1       localhost" >> /etc/hosts
    echo "127.0.1.1 ${username}.localdomain ${username}" >> /etc/hosts
    useradd -m ${username}
-   echo ${username}:${password} | chpasswd
+   echo ${username}:${userpass} | chpasswd
    echo "${username} ALL=(ALL) ALL" >> /etc/sudoers.d/${username}
 
    sed -i 's/^# %ALL=(ALL:ALL) ALL/%ALL=(ALL:ALL) ALL/' /etc/pacman.conf
