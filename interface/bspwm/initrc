@@ -1,0 +1,13 @@
+#!  /usr/bin/env bash
+
+# .xinitrc
+
+#transmission-daemon &
+#transmission-rss -f &
+
+
+
+# Launch Window Manager
+#picom -b --experimental-backends &
+sxhkd &
+exec bspwm

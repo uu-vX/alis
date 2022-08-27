@@ -1,32 +1,6 @@
 #!  /usr/bin/env bash
-:' 
-    TO-DO :
-   swap partition size check
-'
-#   BTRFS Filesystem & Snapper 
-   fileSystem="grub-btrfs btrfs-progs "
-   mkinitcpioModules+="btrfs "
 
-#   Choosing the target for the installation.
-   info_print "Available disks for the installation:"
-   PS3="Please select the number of the corresponding disk (e.g. 1): "
-   select ENTRY in $(lsblk -dpnoNAME|grep -P "/dev/sd|nvme|vd");
-   do
-      DISK="$ENTRY"
-      info_print "Arch Linux will be installed on the following disk: $DISK"
-      break
-   done
-
-#   Warn user about deletion of old partition scheme.
-   input_print "This will delete the current partition table on $DISK once installation starts. Do you agree [y/N]?: "
-   read -r disk_response
-   if ! [[ "${disk_response,,}" =~ ^(yes|y)$ ]]; then
-      error_print "Quitting."
-      exit
-   fi
-   info_print "Wiping $DISK."
-   wipefs -af "$DISK" &>/dev/null
-   sgdisk -Zo "$DISK" &>/dev/null
+#   B-Tree Filesystem(BTRFS) & Snapper 
 
 #   Creating a new partition scheme.
     info_print "Creating the partitions on $DISK."
@@ -78,7 +52,10 @@
     mount -o nodatacow,subvol=@var "$BTRFS" /mnt/var
     chattr +C /mnt/var/log
     mount "$ESP" /mnt/boot/
+
 #   Snapper timeline
+    aurPackages+=( "snap-pac-grub" "snapper-gui" )
+
     sed -i "s/^ALLOW_USERS=""/ALLOW_USERS="${username}"/" /etc/snapper/configs/root
     sed -i "s/^TIMELINE_LIMIT_HOURLY="10"/TIMELINE_LIMIT_HOURLY="5"/" /etc/snapper/configs/root
     sed -i "s/^TIMELINE_LIMIT_DAILY="10"/TIMELINE_LIMIT_DAILY="8"/" /etc/snapper/configs/root
@@ -87,13 +64,11 @@
     sed -i "s/^TIMELINE_LIMIT_YEARLY="10"/TIMELINE_LIMIT_YEARLY="0"/" /etc/snapper/configs/root
 
     chown :${username} /.snapshots/
-    sudo systemctl enable snapper-timeline.timer
-    sudo sudosystemctl enable snapper-cleanup.timer
-    sudo systemctl start snapper-timeline.timer
-    sudo systemctl start snapper-cleanup.timer
-    sudo systemctl enable grub-btrfs.path
-    sudo systemctl start grub-btrfs.path
 
+    sudo systemctl enable snapper-timeline.timer && sudo systemctl start snapper-timeline.timer
+    sudo systemctl enable snapper-cleanup.timer && sudo systemctl start snapper-cleanup.timer
+    sudo systemctl enable grub-btrfs.path && sudo systemctl start grub-btrfs.path
+        
 #   Hook
     sudo mkdir /etc/pacman.d/hooks
     sudo echo "[Trigger]" > /etc/pacman.d/hooks/95-bootbackup.hook
@@ -108,3 +83,10 @@
     sudo echo "Description = Backing up /boot..." >> /etc/pacman.d/hooks/95-bootbackup.hook
     sudo echo "When = PreTransaction" >> /etc/pacman.d/hooks/95-bootbackup.hook
     sudo echo "Exec = /ustr/bin/rsync -a --delete /boot /.bootbackup" >> /etc/pacman.d/hooks/95-bootbackup.hook
+
+
+cleanSnapshot () {
+    snapper -c root list
+    snapper -c root create -c timeline --description AfterInstall
+    sudo btrfs property set -ts /.snapshots/1/snapshot/ ro false
+}
